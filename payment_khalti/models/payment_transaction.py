@@ -14,11 +14,10 @@ class PaymentTransaction(models.Model):
         secret = provider.khalti_live_secret_key if provider.state == "enabled" else provider.khalti_test_secret_key
         base = provider._khalti_base_url()
 
-        amount_paisa = int(round(self.amount * 100))  # Khalti requires paisa
         payload = {
             "return_url": self._get_processing_return_url(),
             "website_url": self.env["ir.config_parameter"].sudo().get_param("web.base.url"),
-            "amount": amount_paisa,
+            "amount": int(round(self.amount * 100)),  # paisa
             "purchase_order_id": self.reference,
             "purchase_order_name": self.reference,
             "customer_info": {
@@ -28,14 +27,11 @@ class PaymentTransaction(models.Model):
             },
         }
         headers = {"Authorization": f"Key {secret}", "Content-Type": "application/json"}
-
-        # NOTE: pass a dict via 'json=' (do NOT json.dumps yourself)
         r = requests.post(f"{base}/epayment/initiate/", json=payload, headers=headers, timeout=30)
         if not r.ok:
             raise ValidationError(_("Khalti initiate failed: %s") % r.text)
-
         data = r.json()
-        self.provider_reference = data.get("pidx")  # save for lookup
+        self.provider_reference = data.get("pidx")
         return {"redirect_url": data.get("payment_url"), "redirect_method": "GET"}
 
     @classmethod
@@ -43,10 +39,7 @@ class PaymentTransaction(models.Model):
         if provider_code != "khalti":
             return super()._get_tx_from_notification_data(provider_code, notification_data)
         pidx = (notification_data or {}).get("pidx")
-        return cls.search([
-            ("provider_code", "=", "khalti"),
-            ("provider_reference", "=", pidx)
-        ], limit=1)
+        return cls.search([("provider_code", "=", "khalti"), ("provider_reference", "=", pidx)], limit=1)
 
     def _process_notification_data(self, notification_data):
         self.ensure_one()
