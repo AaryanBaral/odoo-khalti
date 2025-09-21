@@ -5,7 +5,8 @@
     "summary": "Add Khalti as a payment provider (initiate → redirect → lookup).",
     "depends": ["payment"],
     "data": [
-        "data/payment_provider_data.xml",
+        "data/payment_provider.xml",
+        # "views/payment_khalti_templates.xml"
     ],
     "installable": True,
     "application": False,
